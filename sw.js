@@ -2,12 +2,12 @@
 
 importScripts("js/sw-utils.js");
 
-const STATIC_CACHE = "static-v3";
-const DYNAMIC_CACHE = "dynamic-v1";
+const STATIC_CACHE = "static-v4";
+const DYNAMIC_CACHE = "dynamic-v2";
 const INMUTABLE_CACHE = "inmutable-v1";
 
 const APP_SHELL = [
-//   "/",
+  //   "/",
   "index.html",
   "css/style.css",
   "img/favicon.ico",
@@ -17,7 +17,7 @@ const APP_SHELL = [
   "img/avatars/thor.jpg",
   "img/avatars/wolverine.jpg",
   "js/app.js",
-  "js/sw-utils.js"
+  "js/sw-utils.js",
 ];
 
 const APP_SHELL_INMUTABLE = [
@@ -39,28 +39,31 @@ self.addEventListener("install", (e) => {
   e.waitUntil(Promise.all([cacheStatic, cacheInmutable]));
 });
 
-self.addEventListener("activate", e => {
-    const respuesta = caches.keys().then(keys => {
-        keys.forEach( key => {
-            if(key !== STATIC_CACHE && key.includes("static")) {
-                return caches.delete(key);
-            }
-        });
+self.addEventListener("activate", (e) => {
+  const respuesta = caches.keys().then((keys) => {
+    keys.forEach((key) => {
+      if (key !== STATIC_CACHE && key.includes("static")) {
+        return caches.delete(key);
+      }
+
+      if (key !== DYNAMIC_CACHE && key.includes("dynamic")) {
+        return caches.delete(key);
+      }
     });
-    e.waitUntil(respuesta);
-})
+  });
+  e.waitUntil(respuesta);
+});
 
-self.addEventListener("fetch", e => {
+self.addEventListener("fetch", (e) => {
+  const respuesta = caches.match(e.request).then((res) => {
+    if (res) {
+      return res;
+    } else {
+      return fetch(e.request).then((newRes) => {
+        return actualizaCacheDinamico(DYNAMIC_CACHE, e.request, newRes);
+      });
+    }
+  });
 
-    const respuesta = caches.match(e.request).then( res => {
-        if(res) {
-            return res;
-        } else {
-            return fetch(e.request).then(newRes => {
-                return actualizaCacheDinamico(DYNAMIC_CACHE, e.request, newRes);
-            })
-        }
-    });
-
-    e.respondWith(respuesta);
-})
+  e.respondWith(respuesta);
+});
